@@ -1,5 +1,6 @@
 #include "file.h"
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <unistd.h>
 
@@ -90,7 +91,7 @@ void File::KFlush()
 ////////////////// FILESYSTEM CLASS ///////////////////////////////
 ///////////////////////////////////////////////////////////////////
 
-File *OpenFile(const std::string &path, fsMode_t mode)
+File *FileSystem::OpenFile(const std::string &path, fsMode_t mode)
 {
 	// Make sure the file exists
 	if (!IsFile(path))
@@ -113,8 +114,7 @@ File *OpenFile(const std::string &path, fsMode_t mode)
 
 	// Allocate a file
 	File *f = new File;
-	// Null the memory
-	memset(f, 0, sizeof(File));
+	f->len = 0;
 	// Open the file.
 	f->fd = open(path.c_str(), flags);
 
@@ -127,7 +127,7 @@ File *OpenFile(const std::string &path, fsMode_t mode)
 	return f;
 }
 
-void CloseFile(File *f)
+void FileSystem::CloseFile(File *f)
 {
 	close(f->fd);
 	delete f;
