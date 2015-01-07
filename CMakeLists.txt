@@ -77,6 +77,7 @@ include (CheckLibraryExists)
 include (CheckFunctionExists)
 include (CheckCXXSourceCompiles)
 include (CheckCXXCompilerFlag)
+include (TestBigEndian)
 
 check_type_size(int8_t HAVE_INT8_T)
 check_type_size(uint8_t HAVE_UINT8_T)
@@ -113,6 +114,16 @@ check_cxx_source_compiles("
 #include <string.h>
 int main() { const char *abc = \"abc\"; char *str = strndupa(abc, 5); return 0; }
 " HAVE_STRNDUPA)
+
+# Check endianness.
+TEST_BIG_ENDIAN(BIGENDIAN)
+if (BIGENDIAN)
+	message(STATUS "Compiling for Big Endian...")
+	add_definitions(-DBIGENDIAN=1)
+else (BIGENDIAN)
+	message(STATUS "Compiling for Little Endian...")
+	add_definitions(-DBIGENDIAN=0)
+endif(BIGENDIAN)
 
 # Probably a better way of doing this but whatever.
 set(LIBNAME "lib${PROJECT_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
