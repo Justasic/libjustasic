@@ -38,6 +38,8 @@ class File
 	int fd;
 	// The length of the file (a cached variable)
 	size_t len;
+	// Modes originally set
+	fsMode_t modes;
 	// Mark this class as being a friend of the FileSystem class
 	// This allows us to create these file objects via the FileSystem class.
 	friend class FileSystem;

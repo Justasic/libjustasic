@@ -89,14 +89,14 @@ void File::KFlush()
 FILE *File::GetFILE()
 {
 	std::string flags;
-	if (mode & (FS_READ | FS_WRITE))
+	if (this->modes & (FS_READ | FS_WRITE))
 		flags = "rw";
-	else if ((mode & FS_READ) && !(mode & FS_WRITE))
+	else if ((this->modes & FS_READ) && !(this->modes & FS_WRITE))
 		flags = "r";
-	else if ((mode & FS_WRITE) && !(mode & FS_READ))
+	else if ((this->modes & FS_WRITE) && !(this->modes & FS_READ))
 		flags = "w";
 
-	if (mode & FS_APPEND)
+	if (this->modes & FS_APPEND)
 		flags = "a";
 
 	return fdopen(this->fd, flags.c_str());
@@ -129,6 +129,7 @@ File *FileSystem::OpenFile(const std::string &path, fsMode_t mode)
 	// Allocate a file
 	File *f = new File;
 	f->len = 0;
+	f->modes = mode;
 	// Open the file.
 	f->fd = open(path.c_str(), flags);
 
