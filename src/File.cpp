@@ -86,6 +86,22 @@ void File::KFlush()
 		;
 }
 
+FILE *File::GetFILE()
+{
+	std::string flags;
+	if (mode & (FS_READ | FS_WRITE))
+		flags = "rw";
+	else if ((mode & FS_READ) && !(mode & FS_WRITE))
+		flags = "r";
+	else if ((mode & FS_WRITE) && !(mode & FS_READ))
+		flags = "w";
+
+	if (mode & FS_APPEND)
+		flags = "a";
+
+	return fdopen(this->fd, flags.c_str());
+}
+
 
 ///////////////////////////////////////////////////////////////////
 ////////////////// FILESYSTEM CLASS ///////////////////////////////
@@ -109,8 +125,6 @@ File *FileSystem::OpenFile(const std::string &path, fsMode_t mode)
 
 	if (mode & FS_APPEND)
 		flags |= O_APPEND;
-
-	flags |= mode & (FS_READ | FS_WRITE) ? O_RDWR : 0;
 
 	// Allocate a file
 	File *f = new File;

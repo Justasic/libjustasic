@@ -56,6 +56,8 @@ public:
 	virtual void Flush();
 	// Flush userspace and kernel buffers -- forces a write to device
 	virtual void KFlush();
+	// Get a libc FILE pointer
+	virtual FILE *GetFILE();
 
 	// String-style write functions
 	template<typename... Args>
