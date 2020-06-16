@@ -23,43 +23,34 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include <unistd.h>
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <dlfcn.h>
-#include <cassert>
+#include <cstdint>
+#include <cstring>
 
-class DynamicLibrary
+inline char *NormalizePath(char *path)
 {
-    protected:
-        void *handle;
-        std::string name;
-    public:
-        DynamicLibrary(const std::string &str);
-        ~DynamicLibrary();
+    char *orig = path;
+    while (*path++)
+    {
+        if (*path == '\\')
+            *path = '/';
+    }
 
-        template<typename T> T ResolveSymbol(const std::string &str)
-        {
-            // Union-cast to get around C++ warnings.
-            union {
-                T func;
-                void *ptr;
-            } fn;
+    return orig;
+}
 
-            fn.ptr = dlsym(this->handle, str.c_str());
-            if (!fn.ptr)
-            {
-                fprintf(stderr, "Failed to resolve symbol %s: %s\n", str.c_str(), dlerror());
-                return T();
-            }
-
-            return fn.func;
-        }
-
-        inline std::string GetName() const
-        {
-            return this->name;
-        }
-};
+inline void *memrev(void *dest, const void *src, size_t n)
+{
+	// Iterators, s is beginning, e is end.
+	unsigned char *s = (unsigned char*)dest, *e = ((unsigned char*)dest) + n - 1;
+	// Copy to out buffer for our work
+	memcpy(dest, src, n);
+	// Iterate and reverse copy the bytes
+	for (; s < e; ++s, --e)
+	{
+		unsigned char t = *s;
+		*s = *e;
+		*e = t;
+	}
+	// Return provided buffer
+	return dest;
+}

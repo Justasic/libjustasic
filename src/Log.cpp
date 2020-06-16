@@ -22,44 +22,6 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-#include <unistd.h>
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <dlfcn.h>
-#include <cassert>
-
-class DynamicLibrary
-{
-    protected:
-        void *handle;
-        std::string name;
-    public:
-        DynamicLibrary(const std::string &str);
-        ~DynamicLibrary();
-
-        template<typename T> T ResolveSymbol(const std::string &str)
-        {
-            // Union-cast to get around C++ warnings.
-            union {
-                T func;
-                void *ptr;
-            } fn;
-
-            fn.ptr = dlsym(this->handle, str.c_str());
-            if (!fn.ptr)
-            {
-                fprintf(stderr, "Failed to resolve symbol %s: %s\n", str.c_str(), dlerror());
-                return T();
-            }
-
-            return fn.func;
-        }
-
-        inline std::string GetName() const
-        {
-            return this->name;
-        }
-};
+#include "Log.h"
+// Just the shared pointer for the log sink. More may be added here in future.
+std::shared_ptr<spd::logger> Log::logsink;

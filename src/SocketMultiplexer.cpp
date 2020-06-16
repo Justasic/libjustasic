@@ -22,61 +22,45 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "vec.h"
-#include "MessageChannel.h"
+#include "SocketMultiplexer.h"
+#include "Flux.h"
 
-static vec_t(MessageListener_t) _callbacks;
-
-bool AnnounceMessage(PluginMessage_t *msg)
+/**
+ * This file is entirely a stub to make sure that the application links correctly.
+ * These are actually implemented in the socket engine modules.
+ */
+// Well.. I had to give the base class *SOMETHING* as an argument
+// or the compiler whines about the implicit deletion of the
+// default constructor of the Provider class.
+SocketMultiplexer::SocketMultiplexer(Module *m) : Provider(m, "SocketMultiplexer", PR_MULTIPLEXER)
 {
-	bool stop = false;
+	// Make sure another Multiplexer isnt already loaded.
+	// Multiplexers are always modules and therefore this is a
+	// module exception.
+	if (ProviderHandler::FindProviders(PR_MULTIPLEXER).size() >= 2)
+		throw ModuleException("You cannot load two Multiplexers!");
+}
 
-	// Announce the message to every message listener
-	MessageListener_t call;
-	int i;
-	vec_foreach(&_callbacks, call, i)
+Socket *SocketMultiplexer::FindSocket(int sock_fd)
+{
+	for (auto it : this->Sockets)
 	{
-		if (!call(msg))
-			stop = true;
+		if (it->GetFD() == sock_fd)
+			return it;
 	}
-
-	// Deallocate our message once finished.
-	free(msg);
-
-	return stop;
+	return nullptr;
 }
 
-void AddMessageListener(MessageListener_t caller)
-{
-	// Here specifically we do a sizeof(MessageListener_t*) since we want
-	// to store the pointer size for pointer data.
-	PluginMessage_t *msg = CreateMessage("CORE", "NewReceiver", sizeof(intptr_t));
-	memcpy(msg->data, (intptr_t)caller, sizeof(intptr_t));
-	
-	if (AnnouceMessage(msg))
-		return;
+SocketMultiplexer::~SocketMultiplexer() {}
 
-	vec_push(&_callbacks, caller);
-}
+// Initalizers
+void SocketMultiplexer::Initialize() {}
+void SocketMultiplexer::Terminate() {}
 
-void RemoveMessageListener(MessageListener_t caller)
-{
-	PluginMessage_t *msg = CreateMessage("CORE", "DeleteReceiver", sizeof(intptr_t));
-	memcpy(msg->data, (intptr_t)caller, sizeof(intptr_t));
+// Sockets interact with these functions.
+bool SocketMultiplexer::AddSocket(Socket *s) { return false; }
+bool SocketMultiplexer::RemoveSocket(Socket *s) { return false; }
+bool SocketMultiplexer::UpdateSocket(Socket *s) { return false; }
 
-	if (AnnouceMessage(msg))
-		return;
-	
-	vec_remove(&_callbacks, caller);
-}
-
-PluginMessage_t *CreateMessage(const char *ChannelName, const char *MessageName, size_t Datalen)
-{
-	PluginMessage_t *msg = malloc(sizeof(PluginMessage_t) + Datalen);
-	msg->ChannelName = ChannelName;
-	msg->MessageName = MessageName;
-	msg->AllocSize = Datalen;
-	// Assume our size will be of Datalen.
-	msg->Length = Datalen;
-	return msg;
-}
+// This is called in the event loop to slow the program down and process sockets.
+void SocketMultiplexer::Multiplex(time_t sleep) {}

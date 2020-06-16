@@ -23,43 +23,38 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include <unistd.h>
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <dlfcn.h>
-#include <cassert>
+#include <ctime>
+#include <vector>
 
-class DynamicLibrary
+class Timer
 {
-    protected:
-        void *handle;
-        std::string name;
-    public:
-        DynamicLibrary(const std::string &str);
-        ~DynamicLibrary();
+	// This allows us to keep from branching
+	// but still check if the timer needs to be run.
+	friend class TimerHandler;
 
-        template<typename T> T ResolveSymbol(const std::string &str)
-        {
-            // Union-cast to get around C++ warnings.
-            union {
-                T func;
-                void *ptr;
-            } fn;
+  protected:
+	// Timeout we're supposed to have.
+	time_t TimeOut;
+	time_t RepeatInterval;
+	// Whether or not to repeat the timer.
+	bool Repeat;
 
-            fn.ptr = dlsym(this->handle, str.c_str());
-            if (!fn.ptr)
-            {
-                fprintf(stderr, "Failed to resolve symbol %s: %s\n", str.c_str(), dlerror());
-                return T();
-            }
+  public:
+	// If repeat = false then the timeout is the next time(NULL) + whatever seconds
+	// If repeat = true then the timeout is the number of seconds to timeout.
+	Timer(time_t timeout, bool repeat);
+	virtual ~Timer();
 
-            return fn.func;
-        }
+	// Overload for running a block of code after a timeout.
+	virtual void Tick(time_t CurrentTime) = 0;
+};
 
-        inline std::string GetName() const
-        {
-            return this->name;
-        }
+class TimerHandler
+{
+	static std::vector<Timer *> timers;
+
+  public:
+	static void TickTimers();
+	static void RegisterTimer(Timer *t);
+	static void DelistTimer(Timer *t);
 };

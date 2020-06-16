@@ -22,44 +22,46 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-#include <unistd.h>
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <dlfcn.h>
-#include <cassert>
+#include "Timer.h"
+#include <algorithm>
 
-class DynamicLibrary
+// All our timers :D
+std::vector<Timer *> TimerHandler::timers;
+
+// Initialize our timer class.
+Timer::Timer(time_t timeout, bool repeat)
+	: TimeOut(repeat ? time(NULL) + timeout : timeout), RepeatInterval(repeat ? timeout : 0UL), Repeat(repeat)
 {
-    protected:
-        void *handle;
-        std::string name;
-    public:
-        DynamicLibrary(const std::string &str);
-        ~DynamicLibrary();
+	TimerHandler::RegisterTimer(this);
+}
 
-        template<typename T> T ResolveSymbol(const std::string &str)
-        {
-            // Union-cast to get around C++ warnings.
-            union {
-                T func;
-                void *ptr;
-            } fn;
+Timer::~Timer() { TimerHandler::DelistTimer(this); }
 
-            fn.ptr = dlsym(this->handle, str.c_str());
-            if (!fn.ptr)
-            {
-                fprintf(stderr, "Failed to resolve symbol %s: %s\n", str.c_str(), dlerror());
-                return T();
-            }
+void TimerHandler::TickTimers()
+{
+	// Get our current time and store it.
+	time_t thetime = time(NULL);
+	for (auto it : timers)
+	{
+		// We found a timer to tick.
+		if (it->TimeOut <= thetime)
+		{
+			it->Tick(thetime);
+			// Get the current time from the time function because
+			// some Tick function calls may take extraordinarily long
+			if (it->Repeat)
+				it->TimeOut = time(NULL) + it->RepeatInterval;
+			else
+				delete it;
+		}
+	}
+}
 
-            return fn.func;
-        }
+void TimerHandler::RegisterTimer(Timer *t) { timers.push_back(t); }
 
-        inline std::string GetName() const
-        {
-            return this->name;
-        }
-};
+void TimerHandler::DelistTimer(Timer *t)
+{
+	auto iter = std::find(timers.begin(), timers.end(), t);
+	if (iter != timers.end())
+		timers.erase(iter);
+}

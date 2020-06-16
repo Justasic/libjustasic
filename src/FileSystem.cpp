@@ -22,23 +22,34 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#include "file.h"
+// clang-format off
+#include "Flux.h"
+#include "FileSystem.h"
+#include <iostream>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <libgen.h>
+#include <string.h>
+#include <random>
 
 // Read from the file
 size_t File::Read(void *buffer, size_t len)
 {
-	return read(this->fd, buffer, len);
+	return ::read(this->fd, buffer, len);
 }
 
 // Write to the file
 size_t File::Write(const void *buffer, size_t len)
 {
-	return write(this->fd, buffer, len);
+	return ::write(this->fd, buffer, len);
+}
+
+size_t File::Putln(const Flux::string &str)
+{
+	const void *data = reinterpret_cast<const void*>(str.c_str());
+	return ::write(this->fd, data, str.length());
 }
 
 // Get the length of the file
@@ -113,7 +124,7 @@ void File::KFlush()
 
 FILE *File::GetFILE()
 {
-	std::string flags;
+	Flux::string flags;
 	if (this->modes & (FS_READ | FS_WRITE))
 		flags = "rw";
 	else if ((this->modes & FS_READ) && !(this->modes & FS_WRITE))
@@ -132,12 +143,8 @@ FILE *File::GetFILE()
 ////////////////// FILESYSTEM CLASS ///////////////////////////////
 ///////////////////////////////////////////////////////////////////
 
-File *FileSystem::OpenFile(const std::string &path, fsMode_t mode)
+File *FileSystem::OpenFile(const Flux::string &path, fsMode_t mode)
 {
-	// Make sure the file exists
-	if (!IsFile(path))
-		return nullptr;
-
 	// Calculate flags
 	int flags = 0;
 
@@ -151,19 +158,87 @@ File *FileSystem::OpenFile(const std::string &path, fsMode_t mode)
 	if (mode & FS_APPEND)
 		flags |= O_APPEND;
 
+	// Set permissions, -rw-r--r--
+	mode_t modes = (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
 	// Allocate a file
 	File *f = new File;
 	f->len = 0;
 	f->modes = mode;
 	// Open the file.
-	f->fd = open(path.c_str(), flags);
+	f->fd = open(path.c_str(), flags, modes);
 
-	if (f->fd == -1)
+	// Try adding O_CREAT to the list.
+	if (f->fd == -1 && errno == ENOENT)
+	{
+		f->fd = open(path.c_str(), flags | O_CREAT, modes);
+		if (f->fd == -1)
+			goto fail;
+	}
+	else if (f->fd == -1)
+	{
+fail:
+		//printf("Could not open file \"%s\": %s\n", path.c_str(), strerror(errno));
+		delete f;
 		// we had an error. Errno was set.
 		// TODO: Throw an exception here.
 		return nullptr;
+	}
+
+	f->path = path;
 
 	// Successfully opened our file, return it.
+	return f;
+}
+
+static inline std::vector<char> charset()
+{
+	//Change this to suit
+	return std::vector<char>(
+		{'0','1','2','3','4',
+			'5','6','7','8','9',
+			'A','B','C','D','E','F',
+			'G','H','I','J','K',
+			'L','M','N','O','P',
+			'Q','R','S','T','U',
+			'V','W','X','Y','Z',
+			'a','b','c','d','e','f',
+			'g','h','i','j','k',
+			'l','m','n','o','p',
+			'q','r','s','t','u',
+			'v','w','x','y','z'
+		});
+};
+
+static std::string random_string(size_t length)
+{
+	//0) create the character set.
+	//   yes, you can use an array here,
+	//   but a function is cleaner and more flexible
+	const auto ch_set = charset();
+
+	//1) create a non-deterministic random number generator
+	std::default_random_engine rng(std::random_device{}());
+
+	//2) create a random number "shaper" that will give
+	//   us uniformly distributed indices into the character set
+	std::uniform_int_distribution<> dist(0, ch_set.size() - 1);
+
+	//3) create a function that ties them together, to get:
+	//   a non-deterministic uniform distribution from the
+	//   character set of your choice.
+	auto randchar = [ch_set, &dist, &rng](){ return ch_set[dist(rng)]; };
+
+	std::string str(length, 0);
+	std::generate_n(str.begin(), length, randchar);
+	return str;
+}
+
+File *FileSystem::OpenTemporaryFile(const Flux::string &templatepath)
+{
+	// First parse our path and fill in the template.
+	auto str = random_string(8);
+	File *f = OpenFile(templatepath + "." + str.c_str(), fsMode_t(FS_READ | FS_WRITE));
 	return f;
 }
 
@@ -173,21 +248,43 @@ void FileSystem::CloseFile(File *f)
 	delete f;
 }
 
+bool FileSystem::CopyFile(File *dest, File *src)
+{
+	if (!dest || !src)
+		return false;
 
-bool FileSystem::IsDirectory(const std::string &str)
+	// Allocate a temporary buffer.
+	uint8_t *buf = new uint8_t[1024];
+
+	// Copy the data
+	size_t len = 0;
+	do
+	{
+		len = src->Read(buf, 1024);
+		dest->Write(buf, len);
+	}
+	while (len == 1024);
+
+	delete [] buf;
+
+	return true;
+}
+
+
+bool FileSystem::IsDirectory(const Flux::string &str)
 {
 	struct stat fileinfo;
 
 	if (stat(str.c_str(), &fileinfo) == 0)
 	{
 		if (S_ISDIR(fileinfo.st_mode))
-			return false;
+			return true;
 	}
 
-	return true;
+	return false;
 }
 
-bool FileSystem::IsFile(const std::string &file)
+bool FileSystem::IsFile(const Flux::string &file)
 {
 	struct stat st_buf;
 	memset(&st_buf, 0, sizeof(struct stat));
@@ -200,7 +297,7 @@ bool FileSystem::IsFile(const std::string &file)
 	return false;
 }
 
-bool FileSystem::FileExists(const std::string &file)
+bool FileSystem::FileExists(const Flux::string &file)
 {
 	struct stat sb;
 
@@ -225,11 +322,18 @@ bool FileSystem::FileExists(const std::string &file)
 	return true;
 }
 
-void FileSystem::MakeDirectory(const std::string &dir)
+bool FileSystem::Delete(const Flux::string &file)
+{
+	return unlink(file.c_str()) == 0 ? true : false;
+}
+
+void FileSystem::MakeDirectory(const Flux::string &dir)
 {
 	char tmp[256];
 	char *p = NULL;
 	size_t len;
+	// Set directory access permissions: drwxr-xr-x
+	mode_t modes = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
 	snprintf(tmp, sizeof(tmp), "%s", dir.c_str());
 	len = strlen(tmp);
@@ -242,29 +346,37 @@ void FileSystem::MakeDirectory(const std::string &dir)
 		if(*p == '/')
 		{
 			*p = 0;
-			mkdir(tmp, S_IRWXU);
+			mkdir(tmp, modes);
 			*p = '/';
 		}
 	}
-	mkdir(tmp, S_IRWXU);
+	mkdir(tmp, modes);
 }
 
-std::string FileSystem::GetCurrentDirectory()
+Flux::string FileSystem::GetCurrentDirectory()
 {
 	// The posix 2001 standard states that getcwd will call malloc() to
 	// allocate a string, this is great because I hate static buffers.
 	char *cwd = getcwd(NULL, 0);
-	std::string str = cwd;
+	Flux::string str = cwd;
 	str += "/";
 	free(cwd);
 
 	return str;
 }
 
-
-static inline std::vector<std::string> getdir(const std::string &dir)
+Flux::string FileSystem::RealPath(const Flux::string &str)
 {
-	std::vector<std::string> files;
+	char *resolved_path = realpath(str.c_str(), nullptr);
+	Flux::string path = resolved_path;
+	free(resolved_path);
+	return path;
+}
+
+
+static inline Flux::vector getdir(const Flux::string &dir)
+{
+	Flux::vector files;
 	DIR *dp;
 	struct dirent *dirp;
 	if ((dp  = opendir(dir.c_str())) == NULL)
@@ -276,19 +388,22 @@ static inline std::vector<std::string> getdir(const std::string &dir)
 
 	while ((dirp = readdir(dp)) != NULL)
 	{
-		std::string dirn = dirp->d_name;
+		Flux::string dirn = dirp->d_name;
 		if (dirn != "." && dirn != "..")
-			files.push_back(dir + "/" + dirn);
+		{
+			Flux::string path = FileSystem::RealPath(dir + "/" + dirn);
+			files.push_back(path);
+		}
 	}
 
 	closedir(dp);
 	return files;
 }
 
-std::vector<std::string> FileSystem::DirectoryList(const std::string &dir)
+Flux::vector FileSystem::DirectoryList(const Flux::string &dir)
 {
-	std::vector<std::string> files;
-	std::vector<std::string> tmp;
+	Flux::vector files;
+	Flux::vector tmp;
 	if (IsDirectory(dir))
 	{
 		files = getdir(dir);
@@ -296,7 +411,7 @@ std::vector<std::string> FileSystem::DirectoryList(const std::string &dir)
 		{
 			if (IsDirectory(file))
 			{
-				std::vector<std::string> tmp2 = DirectoryList(file);
+				Flux::vector tmp2 = DirectoryList(file);
 				tmp.insert(tmp.end(), tmp2.begin(), tmp2.end());
 			}
 		}
@@ -306,4 +421,28 @@ std::vector<std::string> FileSystem::DirectoryList(const std::string &dir)
 	files.insert(files.end(), tmp.begin(), tmp.end());
 
 	return files;
+}
+
+Flux::string FileSystem::Dirname(const Flux::string &str)
+{
+	if (str.empty())
+		return "";
+
+	char *strr = strndup(str.c_str(), str.size());
+	char *cstr = dirname(strr);
+	Flux::string ret(cstr);
+	free(strr);
+	return ret;
+}
+
+Flux::string FileSystem::Basename(const Flux::string &str)
+{
+	if (str.empty())
+		return "";
+
+	char *strr = strndup(str.c_str(), str.size());
+	char *cstr = basename(strr);
+	Flux::string ret(cstr);
+	free(strr);
+	return ret;
 }

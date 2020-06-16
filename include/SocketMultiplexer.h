@@ -23,43 +23,31 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include <unistd.h>
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <dlfcn.h>
-#include <cassert>
+#include "Provider.h"
+#include "Socket.h"
+#include <list>
 
-class DynamicLibrary
+class SocketMultiplexer : public virtual Provider
 {
-    protected:
-        void *handle;
-        std::string name;
-    public:
-        DynamicLibrary(const std::string &str);
-        ~DynamicLibrary();
+  protected:
+	// Used for finding sockets as well as handling other things
+	// like initialization of sockets.
+	std::list<Socket *> Sockets;
 
-        template<typename T> T ResolveSymbol(const std::string &str)
-        {
-            // Union-cast to get around C++ warnings.
-            union {
-                T func;
-                void *ptr;
-            } fn;
+  public:
+	SocketMultiplexer(Module *m);
+	virtual ~SocketMultiplexer();
 
-            fn.ptr = dlsym(this->handle, str.c_str());
-            if (!fn.ptr)
-            {
-                fprintf(stderr, "Failed to resolve symbol %s: %s\n", str.c_str(), dlerror());
-                return T();
-            }
+	// Initalizers
+	virtual void Initialize();
+	virtual void Terminate();
 
-            return fn.func;
-        }
+	// Sockets interact with these functions.
+	virtual bool AddSocket(Socket *s);
+	virtual bool RemoveSocket(Socket *s);
+	Socket *	 FindSocket(int sock_fd);
+	virtual bool UpdateSocket(Socket *s);
 
-        inline std::string GetName() const
-        {
-            return this->name;
-        }
+	// This is called in the event loop to slow the program down and process sockets.
+	virtual void Multiplex(time_t sleep);
 };

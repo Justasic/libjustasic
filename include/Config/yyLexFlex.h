@@ -23,43 +23,29 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include <unistd.h>
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <dlfcn.h>
-#include <cassert>
 
-class DynamicLibrary
+#ifndef YY_DECL
+#	define YY_DECL yy::Parser::symbol_type ConfFlexLexer::yylex(ConfigurationDriver *ctx)
+#endif
+
+// We need this for yyFlexLexer. If we don't #undef yyFlexLexer, the
+// preprocessor chokes on the line `#define yyFlexLexer yyFlexLexer`
+// in `FlexLexer.h`:
+#undef yyFlexLexer
+#include <FlexLexer.h>
+
+// We need this for the yy::Parser::symbol_type:
+#include "parser.hpp"
+
+class ConfFlexLexer : public yyFlexLexer
 {
-    protected:
-        void *handle;
-        std::string name;
-    public:
-        DynamicLibrary(const std::string &str);
-        ~DynamicLibrary();
+  public:
+	// Make clang shut up about the override
+	using yyFlexLexer::yylex;
+	// Use the superclass's constructor:
+	using yyFlexLexer::yyFlexLexer;
 
-        template<typename T> T ResolveSymbol(const std::string &str)
-        {
-            // Union-cast to get around C++ warnings.
-            union {
-                T func;
-                void *ptr;
-            } fn;
-
-            fn.ptr = dlsym(this->handle, str.c_str());
-            if (!fn.ptr)
-            {
-                fprintf(stderr, "Failed to resolve symbol %s: %s\n", str.c_str(), dlerror());
-                return T();
-            }
-
-            return fn.func;
-        }
-
-        inline std::string GetName() const
-        {
-            return this->name;
-        }
+	// Provide the interface to `yylex`; `flex` will emit the
+	// definition into `calc++-scanner.cc`:
+	virtual yy::Parser::symbol_type yylex(ConfigurationDriver *ctx);
 };

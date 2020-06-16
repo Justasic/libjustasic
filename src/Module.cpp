@@ -22,44 +22,37 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
-#include <unistd.h>
-#include <cstdio>
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <dlfcn.h>
-#include <cassert>
+#include "Module.h"
+#include "Exceptions.h"
+#include "Log.h"
+#include <list>
+// This code sucks, you know it and I know it.
+// Move on and call me an idiot later.
+std::list<Module *> Modules;
 
-class DynamicLibrary
+Module::Module(const Flux::string &n, ModType m)
+	: author(""), version(""), description(""), name(n), filename(""), filepath(""), loadtime(time(NULL)), permanent(false), type(m),
+	  handle(nullptr)
 {
-    protected:
-        void *handle;
-        std::string name;
-    public:
-        DynamicLibrary(const std::string &str);
-        ~DynamicLibrary();
+	if (ModuleHandler::FindModule(this->name))
+		throw ModuleException("Module already exists!");
 
-        template<typename T> T ResolveSymbol(const std::string &str)
-        {
-            // Union-cast to get around C++ warnings.
-            union {
-                T func;
-                void *ptr;
-            } fn;
+	Modules.push_back(this);
+}
 
-            fn.ptr = dlsym(this->handle, str.c_str());
-            if (!fn.ptr)
-            {
-                fprintf(stderr, "Failed to resolve symbol %s: %s\n", str.c_str(), dlerror());
-                return T();
-            }
+Module::~Module()
+{
+	"[{}]: Unloading from core"_l(this->name);
+	ModuleHandler::DetachAll(this);
 
-            return fn.func;
-        }
+	auto it = std::find(Modules.begin(), Modules.end(), this);
+	if (it != Modules.end())
+		Modules.erase(it);
+	else
+		"Could not find {} in Module map!"_lw(this->name);
+}
 
-        inline std::string GetName() const
-        {
-            return this->name;
-        }
-};
+void Module::SetAuthor(const Flux::string &person) { this->author = person; }
+void Module::SetVersion(const Flux::string &ver) { this->version = ver; }
+void Module::SetPermanent(bool state) { this->permanent = state; }
+void Module::SetDescription(const Flux::string &desc) { this->description = desc; }
