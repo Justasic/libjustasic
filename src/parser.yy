@@ -25,7 +25,7 @@
 %require "3.0"
 %defines
 // Tell bison we want to use this as our class name
-%define parser_class_name { Parser }
+%define api.parser.class { Parser }
 %define api.token.constructor
 %define api.value.type variant
 %define parse.assert

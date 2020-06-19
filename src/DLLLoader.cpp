@@ -23,7 +23,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <dllloader.h>
+#include <DLLLoader.h>
 
 DynamicLibrary::DynamicLibrary(const std::string &str) : handle(nullptr), name(str)
 {

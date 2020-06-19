@@ -43,7 +43,6 @@ Module::Module(const Flux::string &n, ModType m)
 Module::~Module()
 {
 	"[{}]: Unloading from core"_l(this->name);
-	ModuleHandler::DetachAll(this);
 
 	auto it = std::find(Modules.begin(), Modules.end(), this);
 	if (it != Modules.end())

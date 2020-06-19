@@ -23,11 +23,12 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include "file.h"
+#include "File.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <iostream>
 
 // Read from the file
 size_t File::Read(void *buffer, size_t len)

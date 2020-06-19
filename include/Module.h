@@ -23,11 +23,12 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
+#include "sysconf.h"
 #include "Flux.h"
 #include "ModuleAnnounce.h"
 //#include JSON_HPP_INCLUDE_PATH
 
-#ifdef HAVE_FCNTL_H
+#ifdef HAVE_DLFCN_H
 #	include <dlfcn.h>
 #else
 #	error dlfcn.h is required to compile modules!

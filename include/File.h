@@ -27,8 +27,8 @@
 #include <cstdint>
 #include <vector>
 #include <string>
-#include "str.h"
-#include "flux.h"
+#include "cstr.h"
+#include "Flux.h"
 
 inline const char *GetHighestSize(unsigned long long int &size)
 {
@@ -90,7 +90,7 @@ public:
 	template<typename... Args>
 	int printf(const std::string &str, const Args&... args)
 	{
-		std::string tmp = tfm::format(str.c_str(), args...);
+		std::string tmp = fmt::format(str.c_str(), args...);
 		this->Write(tmp.c_str(), tmp.length());
 	}
 

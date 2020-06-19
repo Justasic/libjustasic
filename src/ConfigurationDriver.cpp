@@ -23,7 +23,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Config/ConfigurationDriver.h"
-#include "FileSystem.h"
+#include "File.h"
 #include "Log.h"
 #include "parser.hpp"
 #include <algorithm>

@@ -22,8 +22,14 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <string.h>
 #include "vec.h"
+#include "sysconf.h"
 #include "MessageChannel.h"
+
+#if __cplusplus
+extern "C" {
+#endif 
 
 static vec_t(MessageListener_t) _callbacks;
 
@@ -51,9 +57,10 @@ void AddMessageListener(MessageListener_t caller)
 	// Here specifically we do a sizeof(MessageListener_t*) since we want
 	// to store the pointer size for pointer data.
 	PluginMessage_t *msg = CreateMessage("CORE", "NewReceiver", sizeof(intptr_t));
-	memcpy(msg->data, (intptr_t)caller, sizeof(intptr_t));
+	intptr_t callerptr = (intptr_t)caller;
+	memcpy(msg->data, &callerptr, sizeof(intptr_t));
 	
-	if (AnnouceMessage(msg))
+	if (AnnounceMessage(msg))
 		return;
 
 	vec_push(&_callbacks, caller);
@@ -62,9 +69,10 @@ void AddMessageListener(MessageListener_t caller)
 void RemoveMessageListener(MessageListener_t caller)
 {
 	PluginMessage_t *msg = CreateMessage("CORE", "DeleteReceiver", sizeof(intptr_t));
-	memcpy(msg->data, (intptr_t)caller, sizeof(intptr_t));
+	intptr_t callerptr = (intptr_t)caller;
+	memcpy(msg->data, &callerptr, sizeof(intptr_t));
 
-	if (AnnouceMessage(msg))
+	if (AnnounceMessage(msg))
 		return;
 	
 	vec_remove(&_callbacks, caller);
@@ -72,7 +80,7 @@ void RemoveMessageListener(MessageListener_t caller)
 
 PluginMessage_t *CreateMessage(const char *ChannelName, const char *MessageName, size_t Datalen)
 {
-	PluginMessage_t *msg = malloc(sizeof(PluginMessage_t) + Datalen);
+	PluginMessage_t *msg = (PluginMessage_t*)malloc(sizeof(PluginMessage_t) + Datalen);
 	msg->ChannelName = ChannelName;
 	msg->MessageName = MessageName;
 	msg->AllocSize = Datalen;
@@ -80,3 +88,7 @@ PluginMessage_t *CreateMessage(const char *ChannelName, const char *MessageName,
 	msg->Length = Datalen;
 	return msg;
 }
+
+#if __cplusplus
+}
+#endif

@@ -49,7 +49,7 @@ namespace std
 #include "spdlog/fmt/ostr.h"
 
 #include "sysconf.h" /* we include the config header from ./configure */
-#include "json.hpp" /* Include json.hpp */
+#include "nlohmann/json.hpp" /* Include json.hpp */
 using json = nlohmann::json;
 
 

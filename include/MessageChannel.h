@@ -22,6 +22,9 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#if __cplusplus
+extern "C" {
+#endif
 
 typedef struct PluginMessage_s
 {
@@ -42,4 +45,8 @@ extern void AddMessageReceiver(MessageListener_t);
 extern void RemoveMessageReceiver(MessageListener_t);
 
 // Allocator
-extern PluginMessage_t *CreateMessage(size_t Datalen);
+extern PluginMessage_t *CreateMessage(const char *ChannelName, const char *MessageName, size_t Datalen);
+
+#if __cplusplus
+}
+#endif

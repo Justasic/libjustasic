@@ -1,3 +1,6 @@
+# Ignore build folders and vscode crap
+.vscode
+build/
 # Compiled Object files
 *.slo
 *.lo
