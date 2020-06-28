@@ -262,14 +262,14 @@ target_compile_features(${LIBNAME}
         cxx_nullptr
 )
 
-set_source_files_properties(${SOURCE_FILES} PROPERTIES LANGUAGE CXX)
+#set_source_files_properties(${SOURCE_FILES} PROPERTIES LANGUAGE CXX)
 set_target_properties(${LIBNAME}
 	PROPERTIES
 		LINKER_LANGUAGE CXX
 		PREFIX ""
 		SUFFIX ""
 		LINK_FLAGS "${LINKFLAGS}"
-		CXX_STANDARD 17
+		CXX_STANDARD 20
 		CXX_STANDARD_REQUIRED YES
 		CXX_EXTENSIONS NO
 )

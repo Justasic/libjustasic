@@ -36,10 +36,6 @@
 #include <regex>
 extern std::list<Module *> Modules;
 
-// For module events.
-std::vector<Module *> ModuleHandler::EventHandlers[I_END];
-std::mutex			  eventmux;
-
 // Even in C++11 this stupid fucking cast function has to exist.
 // I would've rather have used std::function but nooooooo.
 template<class TYPE>
@@ -71,43 +67,6 @@ Flux::string ModuleHandler::ModuleStrerror(ModErr e)
 		default: return "unknown";
 	};
 }
-
-bool ModuleHandler::Attach(ModuleEvents i, Module *mod)
-{
-	assert(mod); // idiot check
-	if (std::find(EventHandlers[i].begin(), EventHandlers[i].end(), mod) != EventHandlers[i].end())
-		return false;
-
-	EventHandlers[i].push_back(mod);
-	return true;
-}
-
-void ModuleHandler::Attach(ModuleEvents *i, Module *mod, size_t sz)
-{
-	assert(mod); // idiot check
-	for (size_t n = 0; n < sz; ++n)
-		Attach(i[n], mod);
-}
-
-bool ModuleHandler::Detach(ModuleEvents i, Module *mod)
-{
-	assert(mod); // idiot check
-	auto x = std::find(EventHandlers[i].begin(), EventHandlers[i].end(), mod);
-
-	if (x == EventHandlers[i].end())
-		return false;
-
-	EventHandlers[i].erase(x);
-	return true;
-}
-
-void ModuleHandler::DetachAll(Module *m)
-{
-	assert(m); // idiot check
-	for (size_t n = I_BEGIN + 1; n != I_END; ++n)
-		Detach(static_cast<ModuleEvents>(n), m);
-}
-
 ModErr ModuleHandler::LoadModule(const Flux::string &modname)
 {
 	// These have to be up here because of the goto statements.
@@ -229,8 +188,6 @@ ModErr ModuleHandler::LoadModule(const Flux::string &modname)
 	FileSystem::CloseFile(src);
 	FileSystem::CloseFile(dest);
 
-	FOREACH_MOD(OnModuleLoad, m);
-
 	return MOD_ERR_OK;
 
 fail:
@@ -263,7 +220,6 @@ bool ModuleHandler::DeleteModule(Module *m)
 			if (it2.equals_cs(m->name))
 			{
 				" {0} depends on {1}, unloading {1} first..."_l(mod->name, m->name);
-				FOREACH_MOD(OnModuleUnload, mod);
 				// We don'r call ModuleHandler::Unload() because it checks if the module is permanent.
 				ModuleHandler::DeleteModule(mod);
 			}
@@ -306,7 +262,6 @@ bool ModuleHandler::Unload(Module *m)
 	if (m->GetPermanent())
 		return false;
 
-	FOREACH_MOD(OnModuleUnload, m);
 	return DeleteModule(m);
 }
 

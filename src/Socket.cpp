@@ -106,31 +106,16 @@ Socket::Socket(int sock, int type, int protocol)
 	// We pretty much ALWAYS want non-blocking sockets for this system.
 	this->SetNonBlocking(true);
 
-	SocketMultiplexer *mplexer = ProviderHandler::FindProviderDynamic<SocketMultiplexer>(PR_MULTIPLEXER);
-
-	// If we have a socket engine, add our socket to it, otherwise throw an exception.
-	if (mplexer)
-	{
-		if (!mplexer->AddSocket(this))
-			throw SocketException("Cannot add module to multiplexer!");
-
-		this->SetFlags(MX_READABLE, MX_WRITABLE);
-
-		if (!mplexer->UpdateSocket(this))
-			throw SocketException("Cannot set socket as readable!");
-	}
-	else
-		throw SocketException("No multiplexer module is loaded!");
+	SocketMultiplexer::AddSocket(this);
+	this->SetFlags(MX_READABLE, MX_WRITABLE);
+	SocketMultiplexer::UpdateSocket(this);
 }
 
 Socket::~Socket()
 {
 	"[Socket Engine] Destroying socket {}"_l(this->sock_fd);
 
-	SocketMultiplexer *mplexer = ProviderHandler::FindProviderDynamic<SocketMultiplexer>(PR_MULTIPLEXER);
-
-	if (mplexer)
-		mplexer->RemoveSocket(this);
+	SocketMultiplexer::RemoveSocket(this);
 
 	::close(this->sock_fd);
 }
@@ -233,8 +218,6 @@ void ConnectionSocket::Connect(const Flux::string &conaddr, short port)
 			throw SocketException("Invalid host: %s", strerror(errno));
 	}
 
-	SocketMultiplexer *mplexer = ProviderHandler::FindProviderDynamic<SocketMultiplexer>(PR_MULTIPLEXER);
-
 	if (::connect(this->sock_fd, &this->sa.sa, sizeof(struct sockaddr)) == -1)
 	{
 		if (errno != EINPROGRESS)
@@ -242,7 +225,7 @@ void ConnectionSocket::Connect(const Flux::string &conaddr, short port)
 		else
 		{
 			this->SetFlags(SS_CONNECTING, MX_WRITABLE);
-			mplexer->UpdateSocket(this);
+			SocketMultiplexer::UpdateSocket(this);
 		}
 	}
 	else

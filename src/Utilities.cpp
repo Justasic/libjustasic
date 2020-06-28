@@ -44,7 +44,6 @@ jmp_buf sigbuf; // Global var used for escaping crashes.
 // Used for segmentation fault tracking
 char	segv_location[255];
 Module *LastRunModule = nullptr;
-Page *  LastRunPage   = nullptr;
 
 ManagedBuffer::ManagedBuffer()
 {

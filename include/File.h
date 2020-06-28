@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <unistd.h>
 #include "cstr.h"
 #include "Flux.h"
 
@@ -44,18 +45,19 @@ inline const char *GetHighestSize(unsigned long long int &size)
 }
 
 // mode parm for Seek
-typedef enum {
+typedef enum
+{
 	FS_SEEK_CUR,
 	FS_SEEK_END,
 	FS_SEEK_SET
 } fsOrigin_t;
 
-typedef enum {
+typedef enum
+{
 	FS_READ,
 	FS_WRITE,
 	FS_APPEND
 } fsMode_t;
-
 
 class File
 {
@@ -65,14 +67,20 @@ class File
 	size_t len;
 	// Modes originally set
 	fsMode_t modes;
+	// The full path of the file
+	Flux::string path;
 	// Mark this class as being a friend of the FileSystem class
 	// This allows us to create these file objects via the FileSystem class.
 	friend class FileSystem;
-public:
+
+  public:
+	virtual ~File() {}
 	// Read from the file
 	virtual size_t Read(void *buffer, size_t len);
 	// Write to the file
 	virtual size_t Write(const void *buffer, size_t len);
+	// Write a line to a file
+	virtual size_t Putln(const Flux::string &str);
 	// Get the length of the file
 	virtual size_t Length();
 	// Get the position we're currently at
@@ -85,13 +93,14 @@ public:
 	virtual void KFlush();
 	// Get a libc FILE pointer
 	virtual FILE *GetFILE();
+	// Get the file path
+	virtual inline Flux::string GetPath() { return this->path; }
 
 	// String-style write functions
 	template<typename... Args>
-	int printf(const std::string &str, const Args&... args)
+	int printf(const Flux::string &str, const Args &... args)
 	{
-		std::string tmp = fmt::format(str.c_str(), args...);
-		this->Write(tmp.c_str(), tmp.length());
+		return this->Putln(Flux::format(str.c_str(), args...));
 	}
 
 	// Endian-portable, type safe, binary Read and write functions.
@@ -101,12 +110,12 @@ public:
 	size_t Read(T &t)
 	{
 		// Read into a temporary variable
-		T tmp;
+		T	  tmp;
 		size_t len = this->Read(&tmp, sizeof(T));
 #ifdef BIGENDIAN
 		// Reverse and copy
 		memrev(&t, &tmp, sizeof(T));
-#else   // We're already little-endian so just copy.
+#else // We're already little-endian so just copy.
 		t = tmp;
 #endif
 		return len;
@@ -125,20 +134,35 @@ public:
 	}
 };
 
-
 class FileSystem
 {
-public:
+  public:
+	static File *OpenFile(const Flux::string &path, fsMode_t mode);
+	static File *OpenTemporaryFile(const Flux::string &templatepath);
+	static void  CloseFile(File *f);
 
-	virtual File *OpenFile(const std::string &path, fsMode_t mode);
-	virtual void CloseFile(File *f);
-
+	static bool CopyFile(File *dest, File *src);
 
 	// Static functions used for simple reasons
-	static bool IsDirectory(const std::string &str);
-	static bool IsFile(const std::string &str);
-	static bool FileExists(const std::string &str);
-	static void MakeDirectory(const std::string &str);
-	static std::string GetCurrentDirectory();
-	static std::vector<std::string> DirectoryList(const std::string &dir);
+	static bool			IsDirectory(const Flux::string &str);
+	static bool			IsFile(const Flux::string &str);
+	static bool			FileExists(const Flux::string &str);
+	static bool			Delete(const Flux::string &file);
+	static void			MakeDirectory(const Flux::string &str);
+	static Flux::string GetCurrentDirectory();
+	static Flux::vector DirectoryList(const Flux::string &dir);
+	static Flux::string Dirname(const Flux::string &str);
+	static Flux::string Basename(const Flux::string &str);
+	static Flux::string RealPath(const Flux::string &str);
+
+	static inline Flux::string GetApplicationDirectory()
+	{
+		char *str = new char[PATH_MAX];
+		bzero(str, PATH_MAX);
+
+		size_t		 r   = readlink("/proc/self/exe", str, PATH_MAX - 1);
+		Flux::string ret = Dirname(Flux::string(str, r));
+		delete[] str;
+		return ret;
+	}
 };

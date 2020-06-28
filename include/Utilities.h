@@ -34,11 +34,9 @@ extern jmp_buf sigbuf; // Global var used for escaping crashes.
 #endif
 
 class Module;
-class Page;
 
 extern char				   segv_location[255];
 extern Module *			   LastRunModule;
-extern Page *			   LastRunPage;
 extern std::list<Module *> Modules;
 extern bool				   TimingSafeStrcmp(const Flux::string &str1, const Flux::string &str2);
 extern Flux::string		   RandomDataGenerator(size_t len);
@@ -49,7 +47,6 @@ extern Flux::string		   DemangleSymbol(const Flux::string &sym);
 	{                                                                                                        \
 		snprintf(segv_location, sizeof(segv_location), "%s %d %s", __FILE__, __LINE__, __PRETTY_FUNCTION__); \
 		LastRunModule = m;                                                                                   \
-		LastRunPage   = p;                                                                                   \
 	}
 
 #define HIDE_SYMBOL __attribute__((visibility("hidden")))

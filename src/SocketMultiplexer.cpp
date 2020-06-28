@@ -29,29 +29,16 @@
  * This file is entirely a stub to make sure that the application links correctly.
  * These are actually implemented in the socket engine modules.
  */
-// Well.. I had to give the base class *SOMETHING* as an argument
-// or the compiler whines about the implicit deletion of the
-// default constructor of the Provider class.
-SocketMultiplexer::SocketMultiplexer(Module *m) : Provider(m, "SocketMultiplexer", PR_MULTIPLEXER)
-{
-	// Make sure another Multiplexer isnt already loaded.
-	// Multiplexers are always modules and therefore this is a
-	// module exception.
-	if (ProviderHandler::FindProviders(PR_MULTIPLEXER).size() >= 2)
-		throw ModuleException("You cannot load two Multiplexers!");
-}
 
 Socket *SocketMultiplexer::FindSocket(int sock_fd)
 {
-	for (auto it : this->Sockets)
+	for (auto it : SocketMultiplexer::Sockets)
 	{
 		if (it->GetFD() == sock_fd)
 			return it;
 	}
 	return nullptr;
 }
-
-SocketMultiplexer::~SocketMultiplexer() {}
 
 // Initalizers
 void SocketMultiplexer::Initialize() {}

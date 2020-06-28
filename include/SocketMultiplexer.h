@@ -26,27 +26,24 @@
 #include "Socket.h"
 #include <list>
 
-class SocketMultiplexer : public virtual Provider
+class SocketMultiplexer
 {
   protected:
 	// Used for finding sockets as well as handling other things
 	// like initialization of sockets.
-	std::list<Socket *> Sockets;
+	static std::list<Socket *> Sockets;
 
   public:
-	SocketMultiplexer(Module *m);
-	virtual ~SocketMultiplexer();
-
 	// Initalizers
-	virtual void Initialize();
-	virtual void Terminate();
+	static void Initialize();
+	static void Terminate();
 
 	// Sockets interact with these functions.
-	virtual bool AddSocket(Socket *s);
-	virtual bool RemoveSocket(Socket *s);
-	Socket *	 FindSocket(int sock_fd);
-	virtual bool UpdateSocket(Socket *s);
+	static bool AddSocket(Socket *s);
+	static bool RemoveSocket(Socket *s);
+	static Socket *	 FindSocket(int sock_fd);
+	static bool UpdateSocket(Socket *s);
 
 	// This is called in the event loop to slow the program down and process sockets.
-	virtual void Multiplex(time_t sleep);
+	static void Multiplex(time_t sleep);
 };

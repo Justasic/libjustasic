@@ -25,9 +25,10 @@
 #include "ThreadEngine.h"
 
 #ifndef NDEBUG
-# define dprintf(...) printf(__VA_ARGS__)
+# include <cstdio>
+# define dbgprintf(...) printf(__VA_ARGS__)
 #else
-# define dprintf(...)
+# define dbgprintf(...)
 #endif
 
 // Create a thread local queue for each thread
@@ -65,7 +66,7 @@ ThreadHandler::~ThreadHandler()
 
 void ThreadHandler::Initialize()
 {
-	dprintf("Thread engine initializing\n");
+	dbgprintf("Thread engine initializing\n");
 	this->funcs = functions_t();
 	this->totalConcurrentThreads = std::thread::hardware_concurrency();
 
@@ -79,7 +80,7 @@ void ThreadHandler::Initialize()
 	// run the game with awful performance.
 	if (this->totalConcurrentThreads <= 1)
 	{
-		dprintf("Seems this CPU is a bit slow, only spawning 2 threads!\n");
+		dbgprintf("Seems this CPU is a bit slow, only spawning 2 threads!\n");
 		spawnthrds = this->totalConcurrentThreads = 2;
 	}
 	else // Otherwise just multiply the threads by 2, I suspect many will idle so this is fine.
@@ -87,7 +88,7 @@ void ThreadHandler::Initialize()
 		spawnthrds = this->totalConcurrentThreads * 2;
 	}
 
-	dprintf("Total supported threads: %d\n", this->totalConcurrentThreads);
+	dbgprintf("Total supported threads: %d\n", this->totalConcurrentThreads);
 
 	// The main thread spawned by the kernel to start
 	// our process is always thread 0.
@@ -97,16 +98,16 @@ void ThreadHandler::Initialize()
 	for (unsigned i = 0; i < spawnthrds; ++i)
 		new WorkerThread(i+1, this);
 
-	dprintf("Spawned %zu threads\n", this->Threads.size());
+	dbgprintf("Spawned %zu threads\n", this->Threads.size());
 }
 
 void ThreadHandler::Shutdown()
 {
-	dprintf("Thread engine shutting down...\n");
+	dbgprintf("Thread engine shutting down...\n");
 	// Wake all threads, make this->funcs read only, finish work, shutdown threads
 	this->JoinThreads();
 	// We avoid a race condition because all threads have been joined at this point.
-	dprintf("%lu jobs left and will not be processed.\n", this->funcs.size());
+	dbgprintf("%lu jobs left and will not be processed.\n", this->funcs.size());
 
 	for (auto it = this->Threads.begin(), it_end = this->Threads.end(); it != it_end;)
 		delete *(it++);
@@ -214,7 +215,7 @@ void WorkerThread::Wake()
 
 void WorkerThread::Join()
 {
-	dprintf("Thread %i joining to next thread...\n", this->threadID);
+	dbgprintf("Thread %i joining to next thread...\n", this->threadID);
 	this->quitting = true;
 	this->th.join();
 }
@@ -258,5 +259,5 @@ void WorkerThread::Main()
 #endif
 	threadid = -1;
 
-	dprintf("Thread %d exiting...\n", this->threadID);
+	dbgprintf("Thread %d exiting...\n", this->threadID);
 }

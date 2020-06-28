@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
+
 typedef struct PluginMessage_s
 {
 	const char *ChannelName; // Name of the message channel

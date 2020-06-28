@@ -265,8 +265,8 @@ namespace Flux
 		string(const base_string &_str) : _string(_str) { }
 		string(const ci::string &_str) : _string(_str.c_str()) { }
 		string(const string &_str, size_type pos = 0, size_type n = npos) : _string(_str._string, pos, n) { }
-		string(const std::vector<string> &_vec, const std::string &delim) { this->implode(_vec, delim); }
-		string(const std::vector<string> &_vec) { this->implode(_vec, " "); }
+		string(const std::vector<string> &_vec, const std::string &delim) { this->join(_vec, delim); }
+		string(const std::vector<string> &_vec) { this->join(_vec, " "); }
 		template <class InputIterator> string(InputIterator first, InputIterator last) : _string(first, last) { }
 
         // Wide-character functions.
@@ -349,7 +349,7 @@ namespace Flux
 			return ret;
 		}
 
-		inline std::vector<string> explode(const string &delim) const
+		inline std::vector<string> split(const string &delim) const
 		{
 			size_t start = 0, end = 0;
 			std::vector<string> ret;
@@ -368,7 +368,7 @@ namespace Flux
 			return ret;
 		}
 
-		inline string implode(const std::vector<string> &_vec, const string &delim)
+		inline string join(const std::vector<string> &_vec, const string &delim)
 		{
 			for (auto it = _vec.begin(), it_end = _vec.end(); it != it_end; ++it)
 			{

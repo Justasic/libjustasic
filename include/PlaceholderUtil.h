@@ -27,14 +27,15 @@
 #include <map>
 #include <string>
 #include <functional>
+#include "Flux.h"
 
 class Placeholder
 {
-	static std::map<std::string, std::function<std::string(std::string, std::string)>> filters;
+	static std::map<Flux::string, std::function<Flux::string(Flux::string, Flux::string)>> filters;
 public:
 	// Add a function to the list of placeholders.
-	static void AddFilter(const std::string &name, const std::function<std::string(std::string, std::string)> &filter);
+	static void AddFilter(const Flux::string &name, const std::function<Flux::string(Flux::string, Flux::string)> &filter);
 
 	// Process any placeholders/filters in the string.
-	static std::string ProcessString(const std::string &str, const std::map<std::string, std::string> &variables);
+	static Flux::string ProcessString(const Flux::string &str, const std::map<Flux::string, Flux::string> &variables);
 };

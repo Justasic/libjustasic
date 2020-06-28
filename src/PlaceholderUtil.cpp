@@ -22,82 +22,65 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 #include "PlaceholderUtil.h"
+#include "Flux.h"
 
-inline bool _booltostr(const std::string &str)
+inline bool _booltostr(const Flux::string &str)
 {
-	auto isequal = [](const std::string &a, const std::string &b)
-	{
-		return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](char cha, char chb){ return std::tolower(cha) == std::tolower(chb); });
-	};
-
 	bool value = false;
-	if (isequal(str, "true"))
+	if (str.equals_ci("true"))
 		value = true;
-	else if (isequal(str, "yes"))
+	else if (str.equals_ci("yes"))
 		value = true;
-	else if (isequal(str, "on"))
+	else if (str.equals_ci("on"))
 		value = true;
-	else if (isequal(str, "enable"))
+	else if (str.equals_ci("enable"))
 		value = true;
-	else if (isequal(str, "enabled"))
+	else if (str.equals_ci("enabled"))
 		value = true;
 
 	return value;
 }
 
-inline std::vector<std::string> _split(const std::string &str, char delim = ' ')
-{
-	std::vector<std::string> tokens;
-	std::stringstream ss(str);
-	std::string token;
-	while (std:::getline(ss, token, delim))
-	{
-		tokens.push_back(token);
-	}
-	return tokens;
-}
-
-inline std::string _yesno(const std::string &lvalue, const std::string &arg)
+inline Flux::string _yesno(const Flux::string &lvalue, const Flux::string &arg)
 {
 	if (arg.empty())
 		return _booltostr(lvalue) ? "yes" : "no";
-	else if (arg.find(",") != std::string::npos)
-		return _split(",")[_booltostr(lvalue) ? 0 : 1];
+	else if (arg.find(",") != Flux::string::npos)
+		return arg.split(",")[_booltostr(lvalue) ? 0 : 1];
 	else
 		return _booltostr(lvalue) ? arg : "no";
 }
 
 // This is a map of all the default functions, these can be overwritten or modified with
 // Placeholder::AddFilter()
-std::map<std::string, std::function<std::string(std::string, std::string)>> Placeholder::filters
+std::map<Flux::string, std::function<Flux::string(Flux::string, Flux::string)>> Placeholder::filters
 {
-	{"upper", [](std::string lvalue, std::string arg){ std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::toupper); return lvalue; }},
-	{"lower", [](std::string lvalue, std::string arg){ std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower); return lvalue; }},
-	{"default_if_none", [](std::string lvalue, std::string arg){ return lvalue.empty() ? arg : lvalue; }},
-	{"empty_if_none", [](std:::string lvalue, std::string arg){ return lvalue.empty() ? "" : arg; }},
-	{"empty_if_false", [](std::string lvalue, std::string arg){ return _booltostr(lvalue) ? arg : ""; }},
-	{"yesno", [](std::string lvalue, std::string arg){ return _yesno(lvalue, arg); }},
-	{"cut", [](std::string lvalue, std::string arg){ return  }},
+	{"upper", [](Flux::string lvalue, Flux::string arg){ std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::toupper); return lvalue; }},
+	{"lower", [](Flux::string lvalue, Flux::string arg){ std::transform(lvalue.begin(), lvalue.end(), lvalue.begin(), ::tolower); return lvalue; }},
+	{"default_if_none", [](Flux::string lvalue, Flux::string arg){ return lvalue.empty() ? arg : lvalue; }},
+	{"empty_if_none", [](Flux::string lvalue, Flux::string arg){ return lvalue.empty() ? "" : arg; }},
+	{"empty_if_false", [](Flux::string lvalue, Flux::string arg){ return _booltostr(lvalue) ? arg : ""; }},
+	{"yesno", [](Flux::string lvalue, Flux::string arg){ return _yesno(lvalue, arg); }},
+	//{"cut", [](Flux::string lvalue, Flux::string arg){ return  }},
 };
 
 // Add a function to the list of placeholders.
-void Placeholder::AddFilter(const std::string &name, const std::function<std::string(std::string, std::string)> &filter)
+void Placeholder::AddFilter(const Flux::string &name, const std::function<Flux::string(Flux::string, Flux::string)> &filter)
 {
 	Placeholder::filters[name] = filter;
 }
 
 // Process any placeholders/filters in the string.
-std::string Placeholder::ProcessString(const std::string &str, const std::map<std::string, std::string> &variables)
+Flux::string Placeholder::ProcessString(const Flux::string &str, const std::map<Flux::string, Flux::string> &variables)
 {
 	if (str.empty() || variables.empty())
 		return str;
 
-	if (str.find("{") == std::string::npos)
+	if (str.find("{") == Flux::string::npos)
 		return str;
 
-	std::string retstr = message;
+	Flux::string retstr = str;
 	// Try and iterate over all our variables
 	for (int pos = retstr.find("{"), pos2 = retstr.find("}", pos);
 			pos != -1 && pos2 != -1;
@@ -107,29 +90,29 @@ std::string Placeholder::ProcessString(const std::string &str, const std::map<st
 		if (pos + 1 > retstr.length() || pos2 + 1 > retstr.length())
 			break;
 
-		std::string variable = retstr.substr(pos + 1, pos2);
-		std::string replacement = "";
+		Flux::string variable = retstr.substr(pos + 1, pos2);
+		Flux::string replacement = "";
 		// If the variable contains a | (verticle bar), then we tokenize on `|` and
         // treat the lvalue as a variable and the rvalue as a function name. The
         // functions are stored as a hashmap and only take one string argument
         // ("dereferenced" value of the lvalue map name.). This allows us to do things
         // like conditionally pluralize words and such in the config.
-		if (variable.find("|") != std::string::npos)
+		if (variable.find("|") != Flux::string::npos)
 		{
-			std::vector<std::string> values = _split(variable, '|');
-			std::string rvalue = values[1], lvalue = values[0];
+			Flux::vector values = variable.split("|");
+			Flux::string rvalue = values[1], lvalue = values[0];
 
-			if (int nextsplit = rvalue.find(":"); nextsplit != std::string::npos)
+			if (int nextsplit = rvalue.find(":"); nextsplit != Flux::string::npos)
 			{
 				rvalue = rvalue.substr(0, nextsplit);
-				std::string argument = values[1].substr(nextsplit + 2, values[1].length() - 1);
+				Flux::string argument = values[1].substr(nextsplit + 2, values[1].length() - 1);
 				// Execute our filter.
 				replacement = Placeholder::filters.at(rvalue)(variables.at(lvalue), argument);
 			}
 			else
 				replacement = Placeholder::filters.at(rvalue)(variables.at(lvalue), "");
 		}
-		else if (variables.contains(variable))
+		else if (variables.find(variable) != variables.end())
 			replacement = variables.at(variable);
 
 		if (!replacement.empty())
